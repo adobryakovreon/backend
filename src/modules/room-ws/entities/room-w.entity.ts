@@ -25,6 +25,9 @@ export class Room {
     playersLimit: number;
 
     @Prop()
+    playersList: string[];
+
+    @Prop()
     startCash: number;
 
     @Prop()

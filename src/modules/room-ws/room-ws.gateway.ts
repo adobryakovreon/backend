@@ -36,19 +36,22 @@ export class RoomWsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     @SubscribeMessage('joinRoom')
-    public async joinRoom(@MessageBody() { id, userName }: { id: string; userName: string }, @ConnectedSocket() client: Socket) {
-        const room = await this.roomWsService.findOne(id);
+    public async joinRoom(@MessageBody() { roomId, userName }: { roomId: string; userName: string }, @ConnectedSocket() client: Socket) {
+        const room = await this.roomWsService.findOne(roomId);
         client.join(room.id);
         const sockedRoom = this.server.sockets.adapter.rooms.get(room.id);
         if (sockedRoom.size <= room.playersLimit) {
-            // console.log(room);
-
-            // if (this.server.sockets.adapter.rooms.get(id).size < room.playersLimit) {
-            // client.join(id);
-            client.broadcast.to(room.id).emit(`room_${room.id}_join`, {
-                message: `user ${userName} join`,
-            });
-            // this.server.to(id).emit(`room_${room.id}_join`, `user ${client.id} join`);
+            await this.roomWsService.addUserInRoom(userName, roomId);
+            const RRoom = await this.roomWsService.findOne(roomId);
+            this.server.to(client.id).emit('sendRoom', RRoom);
+            this.server
+                .to(room.id)
+                .except(client.id)
+                .emit(`room_join`, {
+                    message: `user ${userName} join`,
+                    joinName: userName,
+                    socketId: client.id,
+                });
         } else {
             console.log('max users limit');
             client.leave(room.id);
@@ -56,11 +59,13 @@ export class RoomWsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     @SubscribeMessage('leaveRoom')
-    public leaveRoom(@MessageBody() id: string, @ConnectedSocket() client: Socket) {
-        client.broadcast.to(id).emit(`room_${id}_message`, {
-            message: `user ${client.id} leave`,
+    public leaveRoom(@MessageBody() { roomId, userName }: { roomId: string; userName: string }, @ConnectedSocket() client: Socket) {
+        console.log(userName);
+        this.roomWsService.kickUserFromRoom(userName, roomId);
+        client.broadcast.to(roomId).emit(`room_leave`, {
+            message: `user ${userName} leave`,
         });
-        client.leave(id);
+        client.leave(roomId);
     }
 
     // @SubscribeMessage('updateRoomW')

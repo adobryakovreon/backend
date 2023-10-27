@@ -25,4 +25,36 @@ export class RoomRepository {
             throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+
+    public async addUserInRoom(userName: string, roomId: string) {
+        try {
+            await this.roomModel.findOneAndUpdate(
+                { id: roomId },
+                {
+                    $addToSet: {
+                        playersList: userName,
+                    },
+                }
+            );
+        } catch (error) {
+            console.error(error);
+            throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    public async kickUserFromRoom(userName: string, roomId: string) {
+        try {
+            await this.roomModel.findOneAndUpdate(
+                { id: roomId },
+                {
+                    $pull: {
+                        playersList: userName,
+                    },
+                }
+            );
+        } catch (error) {
+            console.error(error);
+            throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
 }

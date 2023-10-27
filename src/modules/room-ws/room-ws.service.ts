@@ -14,10 +14,18 @@ export class RoomWsService {
         return `This action returns all roomWs`;
     }
 
-    async findOne(id: string) {
+    public async findOne(id: string) {
         const room = await this.roomRepository.findOne(id);
         // console.log('find room:', room);
         return room;
+    }
+
+    public async addUserInRoom(userName: string, roomId: string) {
+        await this.roomRepository.addUserInRoom(userName, roomId);
+    }
+
+    public async kickUserFromRoom(userName: string, roomId: string) {
+        await this.roomRepository.kickUserFromRoom(userName, roomId);
     }
 
     // update(id: number, updateRoomWDto: UpdateRoomWDto) {
