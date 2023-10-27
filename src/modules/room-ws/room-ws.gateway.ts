@@ -24,10 +24,11 @@ export class RoomWsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     @SubscribeMessage('createRoomWs')
-    async create(@MessageBody() createRoomDto: CreateRoomDto) {
+    async create(@MessageBody() createRoomDto: CreateRoomDto, @ConnectedSocket() client: Socket) {
         const newRoom = await this.roomWsService.create(createRoomDto.room);
-        const host = this.server.sockets.sockets.get(createRoomDto.socketId);
+        const host = this.server.sockets.sockets.get(client.id);
         host.join(newRoom.id);
+        console.log(`${newRoom.id} hosted by ${client.id}`);
     }
 
     @SubscribeMessage('findAllRoomWs')
@@ -37,10 +38,21 @@ export class RoomWsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     @SubscribeMessage('joinRoom')
     public async joinRoom(@MessageBody() { roomId, userName }: { roomId: string; userName: string }, @ConnectedSocket() client: Socket) {
+        console.log(roomId);
         const room = await this.roomWsService.findOne(roomId);
         client.join(room.id);
-        const sockedRoom = this.server.sockets.adapter.rooms.get(room.id);
-        if (sockedRoom.size <= room.playersLimit) {
+        const socketRoom = this.server.sockets.adapter.rooms.get(room.id);
+        console.log(socketRoom);
+        // if (!socketRoom) {
+        //     this.server.to(client.id).emit('room_doesnt_exist', {
+        //         message: 'this room doesnt exist',
+        //     });
+        //     return;
+        // }
+        // if (socketRoom.has(client.id)) {
+        //     return;
+        // }
+        if (socketRoom.size <= room.playersLimit) {
             await this.roomWsService.addUserInRoom(userName, roomId);
             const RRoom = await this.roomWsService.findOne(roomId);
             this.server.to(client.id).emit('sendRoom', RRoom);
@@ -60,12 +72,15 @@ export class RoomWsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     @SubscribeMessage('leaveRoom')
     public leaveRoom(@MessageBody() { roomId, userName }: { roomId: string; userName: string }, @ConnectedSocket() client: Socket) {
-        console.log(userName);
+        // const socketRoom = this.server.sockets.adapter.rooms.get(roomId);
+        // if (!socketRoom.has(client.id)) {
+        //     return;
+        // }
+        client.leave(roomId);
         this.roomWsService.kickUserFromRoom(userName, roomId);
         client.broadcast.to(roomId).emit(`room_leave`, {
             message: `user ${userName} leave`,
         });
-        client.leave(roomId);
     }
 
     // @SubscribeMessage('updateRoomW')
