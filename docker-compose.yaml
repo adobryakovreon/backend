@@ -1,0 +1,16 @@
+version: "3.0"
+
+services:
+  main:
+    container_name: responsible-distribution-v5
+    build:
+      context: .
+    env_file:
+      - .env
+    volumes:
+      - .:/home/chief/responsible-distribution-v5
+      - /home/chief/responsible-distribution-v5/node_modules
+    ports:
+      - "5000:5000"
+    command: npm start
+    restart: always
