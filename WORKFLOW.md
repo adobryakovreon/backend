@@ -17,6 +17,3 @@
 | PORT          | number | Порт запуска приложения                                                    |
 | MONGO_CONNECT | string | Строка подключения к mongodb                                               |
 | MONGO_NAME    | string | Название базы в mongodb                                                    |
-| CLIENT_UUID   | string | ID приватной интеграции                                                    |
-| CLIENT_SECRET | string | Секретный ключ приватной интеграции                                        |
-| REDIRECT_URI  | string | URL для перенаправления запроса (используется такой же как и в интеграции) |

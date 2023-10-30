@@ -26,8 +26,7 @@ export class RoomWsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @SubscribeMessage('createRoomWs')
     async create(@MessageBody() createRoomDto: CreateRoomDto, @ConnectedSocket() client: Socket) {
         const newRoom = await this.roomWsService.create(createRoomDto.room);
-        const host = this.server.sockets.sockets.get(client.id);
-        host.join(newRoom.id);
+        client.join(newRoom.id);
         console.log(`${newRoom.id} hosted by ${client.id}`);
     }
 
@@ -36,28 +35,17 @@ export class RoomWsGateway implements OnGatewayConnection, OnGatewayDisconnect {
         return this.roomWsService.findAll();
     }
 
-    @SubscribeMessage('joinRoom')
+    @SubscribeMessage('JOIN_REQUEST')
     public async joinRoom(@MessageBody() { roomId, userName }: { roomId: string; userName: string }, @ConnectedSocket() client: Socket) {
-        console.log(roomId);
         const room = await this.roomWsService.findOne(roomId);
         client.join(room.id);
         const socketRoom = this.server.sockets.adapter.rooms.get(room.id);
-        console.log(socketRoom);
-        // if (!socketRoom) {
-        //     this.server.to(client.id).emit('room_doesnt_exist', {
-        //         message: 'this room doesnt exist',
-        //     });
-        //     return;
-        // }
-        // if (socketRoom.has(client.id)) {
-        //     return;
-        // }
         if (socketRoom.size <= room.playersLimit) {
             await this.roomWsService.addUserInRoom(userName, roomId);
             const RRoom = await this.roomWsService.findOne(roomId);
-            this.server.to(client.id).emit('sendRoom', RRoom);
+            this.server.to(client.id).emit('JOIN_REQUEST_ACCEPTED', RRoom);
             this.server
-                .to(room.id)
+                .to(roomId)
                 .except(client.id)
                 .emit(`room_join`, {
                     message: `user ${userName} join`,
@@ -71,17 +59,24 @@ export class RoomWsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     @SubscribeMessage('leaveRoom')
-    public leaveRoom(@MessageBody() { roomId, userName }: { roomId: string; userName: string }, @ConnectedSocket() client: Socket) {
+    public async leaveRoom(@MessageBody() { roomId, userName }: { roomId: string; userName: string }, @ConnectedSocket() client: Socket) {
         // const socketRoom = this.server.sockets.adapter.rooms.get(roomId);
         // if (!socketRoom.has(client.id)) {
         //     return;
         // }
+        const room = await this.roomWsService.findOne(roomId);
+        if (!room.playersList.includes(userName)) {
+            return;
+        }
         client.leave(roomId);
-        this.roomWsService.kickUserFromRoom(userName, roomId);
+        await this.roomWsService.kickUserFromRoom(userName, roomId);
         client.broadcast.to(roomId).emit(`room_leave`, {
             message: `user ${userName} leave`,
         });
     }
+
+    @SubscribeMessage('sendName')
+    public sendUser(@MessageBody() { userName, roomId }: { userName: string; roomId: string }, @ConnectedSocket() client: Socket) {}
 
     // @SubscribeMessage('updateRoomW')
     // update(@MessageBody() updateRoomWDto: UpdateRoomWDto) {
